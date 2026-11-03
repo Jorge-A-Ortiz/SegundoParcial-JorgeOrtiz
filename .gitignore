@@ -1,0 +1,58 @@
+# SDK local y enlace/junction creado por MCUXpresso.
+# La regla sin barra final tambien excluye un enlace llamado __repo__.
+/__repo__
+/__repo__/
+/mcuxsdk/
+/sdks/
+
+# Directorios de compilacion y salida generada.
+/debug/
+/release/
+/Debug/
+/Release/
+/build/
+/build-*/
+/cmake-build-*/
+/output/
+/out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+build.ninja
+.ninja_deps
+.ninja_log
+compile_commands.json
+
+# Objetos, ejecutables y reportes generados por el compilador.
+*.o
+*.obj
+*.d
+*.su
+*.elf
+*.axf
+*.bin
+*.hex
+*.map
+*.exe
+
+# Preferencias locales adicionales y archivos temporales.
+CMakeUserPresets.json
+.cache/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Se conservan intencionalmente: .vscode/, .mex, CMake/Kconfig,
+# fuentes, README y evidencias (imagenes, video, CSV y logs de pruebas).
