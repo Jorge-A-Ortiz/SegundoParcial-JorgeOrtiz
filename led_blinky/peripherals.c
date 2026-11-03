@@ -109,18 +109,12 @@ instance:
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS **********/
 /* clang-format on */
 
-static void SysTick_init(void) {
-  /* Initialize the systick module. */
-  SysTick_Config(SYSTICK_TICKS);
-}
-
 /***********************************************************************************************************************
  * Initialization functions
  **********************************************************************************************************************/
 void BOARD_InitPeripherals(void)
 {
-  /* Initialize components */
-  SysTick_init();
+  /* No peripheral is initialized in this milestone. */
 }
 
 /***********************************************************************************************************************
