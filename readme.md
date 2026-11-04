@@ -29,4 +29,6 @@ Para el potenciómetro de 10 kΩ, conecta los extremos a 3.3 V/VDDA y GND, y la 
 
 ## Estado de implementación
 
-En este hito, `pin_mux.c` configura P3_12 y P3_13 como salidas inicialmente bajas y SW3/P0_6 como entrada con pull-up. También se retiró el SysTick del ejemplo, que alternaba P3_12 y habría interferido con el LED externo de alarma. El programa aún no implementa el monitor: la temporización de aplicación se incorporará con CTIMER0 en el siguiente hito. Si se regeneran los archivos con MCUXpresso Config Tools, habrá que conservar estas asignaciones y mantener SysTick deshabilitado.
+Hito 1 configuró P3_12 y P3_13 como salidas inicialmente bajas y SW3/P0_6 como entrada con pull-up. Se retiró SysTick porque alternaba P3_12, pin reservado para la alarma.
+
+En el Hito 2, CTIMER0 recibe FRO12M con divisor 1. El prescaler `PR=11` divide los 12 MHz entre 12 y deja el contador a 1 MHz. El match `MR0=1000`, con reset e interrupción, genera un tick nominal de 1 ms; la ISR sólo incrementa el contador de milisegundos. El lazo principal alterna P3_13 cada 500 ms sin retardos bloqueantes, por lo que un ciclo completo del LED dura 1 s. El firmware compila; la comprobación formal en la placa queda para el hito de pruebas.

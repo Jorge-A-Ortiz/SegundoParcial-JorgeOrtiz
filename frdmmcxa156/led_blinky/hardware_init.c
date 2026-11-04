@@ -18,6 +18,8 @@ void BOARD_InitHardware(void)
 {
     BOARD_InitPins();
     BOARD_BootClockFRO12M();
+    CLOCK_AttachClk(kFRO12M_to_CTIMER0);
+    CLOCK_SetClockDiv(kCLOCK_DivCTIMER0, 1U);
     BOARD_InitBootPeripherals();
 }
 /*${function:end}*/
