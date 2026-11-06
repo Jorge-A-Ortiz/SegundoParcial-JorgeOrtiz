@@ -18,6 +18,8 @@ include(${board}/board_files.cmake)
 
 mcux_add_source(
     SOURCES led_blinky.c
+            monitor.c
+            monitor.h
 )
 
 mcux_add_source(

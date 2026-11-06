@@ -20,6 +20,9 @@ void BOARD_InitHardware(void)
     BOARD_BootClockFRO12M();
     CLOCK_AttachClk(kFRO12M_to_CTIMER0);
     CLOCK_SetClockDiv(kCLOCK_DivCTIMER0, 1U);
+    CLOCK_AttachClk(kFRO12M_to_ADC1);
+    CLOCK_SetClockDiv(kCLOCK_DivADC1, 1U);
+    RESET_ReleasePeripheralReset(kADC1_RST_SHIFT_RSTn);
     CLOCK_AttachClk(kFRO12M_to_LPUART0);
     CLOCK_SetClockDiv(kCLOCK_DivLPUART0, 1U);
     RESET_ReleasePeripheralReset(kLPUART0_RST_SHIFT_RSTn);

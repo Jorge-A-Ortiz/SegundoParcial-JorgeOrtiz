@@ -4,6 +4,8 @@
 #include "fsl_gpio.h"
 #include "fsl_ctimer.h"
 #include "fsl_lpuart.h"
+#include "fsl_lpadc.h"
+#include "monitor.h"
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -14,6 +16,11 @@
 #define RX_BUDGET 32U
 
 static volatile uint32_t s_milliseconds;
+static uint32_t s_lastAdcStart;
+static bool s_adcPending;
+static uint16_t s_adcValue;
+static uint8_t s_adcPercent;
+static bool s_adcValid;
 static volatile uint8_t s_txBuffer[TX_SIZE];
 static volatile uint16_t s_txHead;
 static volatile uint16_t s_txTail;
@@ -144,6 +151,55 @@ static void PollRx(void)
     }
 }
 
+static void InitializeAdc(void)
+{
+    lpadc_config_t config;
+    LPADC_GetDefaultConfig(&config);
+    config.powerLevelMode = kLPADC_PowerLevelAlt4;
+    config.referenceVoltageSource = kLPADC_ReferenceVoltageAlt3;
+    config.enableAnalogPreliminary = true;
+    LPADC_Init(ADC1, &config);
+    LPADC_DoOffsetCalibration(ADC1);
+    LPADC_DoAutoCalibration(ADC1);
+
+    lpadc_conv_command_config_t command;
+    LPADC_GetDefaultConvCommandConfig(&command);
+    command.channelNumber = 8U;
+    command.conversionResolutionMode = kLPADC_ConversionResolutionStandard;
+    command.sampleTimeMode = kLPADC_SampleTimeADCK131;
+    LPADC_SetConvCommandConfig(ADC1, 1U, &command);
+
+    lpadc_conv_trigger_config_t trigger;
+    LPADC_GetDefaultConvTriggerConfig(&trigger);
+    trigger.targetCommandId = 1U;
+    trigger.enableHardwareTrigger = false;
+    LPADC_SetConvTriggerConfig(ADC1, 0U, &trigger);
+}
+
+static void PollAdc(uint32_t now)
+{
+    if ((uint32_t)(now - s_lastAdcStart) >= 100U)
+    {
+        s_lastAdcStart += 100U;
+        if (!s_adcPending)
+        {
+            s_adcPending = true;
+            LPADC_DoSoftwareTrigger(ADC1, 1U);
+        }
+    }
+    if (s_adcPending)
+    {
+        lpadc_conv_result_t result;
+        if (LPADC_GetConvResult(ADC1, &result))
+        {
+            s_adcPending = false;
+            s_adcValue = (uint16_t)((result.convValue >> 3U) & MONITOR_ADC_MAX);
+            s_adcPercent = Monitor_Percent(s_adcValue);
+            s_adcValid = true;
+        }
+    }
+}
+
 static bool InitializeUart(void)
 {
     lpuart_config_t config;
@@ -199,6 +255,7 @@ int main(void)
 {
     BOARD_InitHardware();
     InitializeTimer();
+    InitializeAdc();
     if (InitializeUart())
     {
         (void)QueueLine("UART lista\r\n");
@@ -211,6 +268,7 @@ int main(void)
     {
         uint32_t now = s_milliseconds;
         PollRx();
+        PollAdc(now);
 
         while ((uint32_t)(now - lastActivityChange) >= 500U)
         {

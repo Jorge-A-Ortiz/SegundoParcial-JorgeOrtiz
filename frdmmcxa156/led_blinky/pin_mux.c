@@ -62,11 +62,13 @@ void BOARD_InitPins(void)
     CLOCK_EnableClock(kCLOCK_GatePORT0);
     CLOCK_EnableClock(kCLOCK_GateGPIO3);
     CLOCK_EnableClock(kCLOCK_GatePORT3);
+    CLOCK_EnableClock(kCLOCK_GatePORT1);
 
     RESET_ReleasePeripheralReset(kGPIO0_RST_SHIFT_RSTn);
     RESET_ReleasePeripheralReset(kPORT0_RST_SHIFT_RSTn);
     RESET_ReleasePeripheralReset(kGPIO3_RST_SHIFT_RSTn);
     RESET_ReleasePeripheralReset(kPORT3_RST_SHIFT_RSTn);
+    RESET_ReleasePeripheralReset(kPORT1_RST_SHIFT_RSTn);
 
     const gpio_pin_config_t outputOff = {
         .pinDirection = kGPIO_DigitalOutput,
@@ -116,6 +118,11 @@ void BOARD_InitPins(void)
     uartConfig.mux = kPORT_MuxAlt2;
     PORT_SetPinConfig(PORT0, 2U, &uartConfig);
     PORT_SetPinConfig(PORT0, 3U, &uartConfig);
+
+    port_pin_config_t analogConfig = {0};
+    analogConfig.mux = kPORT_MuxAlt0;
+    analogConfig.inputBuffer = kPORT_InputBufferDisable;
+    PORT_SetPinConfig(PORT1, 10U, &analogConfig);
 }
 /***********************************************************************************************************************
  * EOF
