@@ -18,9 +18,7 @@
 static volatile uint32_t s_milliseconds;
 static uint32_t s_lastAdcStart;
 static bool s_adcPending;
-static uint16_t s_adcValue;
-static uint8_t s_adcPercent;
-static bool s_adcValid;
+static monitor_t s_monitor;
 static volatile uint8_t s_txBuffer[TX_SIZE];
 static volatile uint16_t s_txHead;
 static volatile uint16_t s_txTail;
@@ -194,9 +192,8 @@ static void PollAdc(uint32_t now)
         if (LPADC_GetConvResult(ADC1, &result))
         {
             s_adcPending = false;
-            s_adcValue = (uint16_t)((result.convValue >> 3U) & MONITOR_ADC_MAX);
-            s_adcPercent = Monitor_Percent(s_adcValue);
-            s_adcValid = true;
+            Monitor_UpdateSample(&s_monitor, (uint16_t)((result.convValue >> 3U) & MONITOR_ADC_MAX));
+            GPIO_PinWrite(GPIO3, 12U, s_monitor.alarmOn ? 1U : 0U);
         }
     }
 }
@@ -255,6 +252,7 @@ static void InitializeTimer(void)
 int main(void)
 {
     BOARD_InitHardware();
+    Monitor_Init(&s_monitor);
     InitializeTimer();
     InitializeAdc();
     if (InitializeUart())

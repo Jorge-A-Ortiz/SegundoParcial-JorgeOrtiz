@@ -47,3 +47,7 @@ ADC1 lee el canal 8 (ADC1_A8) en P1_10/J4-2 cada 100 ms. Usa resolución de 12 b
 ### Señal de diagnóstico del ADC
 
 P3_0 cambia de nivel justo antes de cada disparo del ADC. Conecta la punta del osciloscopio a P3_0 y la tierra de la sonda a GND de la placa. Entre flancos consecutivos se esperan 100 ms. Entre dos flancos del mismo tipo se esperan 200 ms (5 Hz). P3_0 comparte la señal con el LED azul integrado, que es activo en bajo.
+
+### Alarma con histéresis
+
+El monitor arranca en RUN con THR=70 % y la alarma externa apagada. Cada muestra válida actualiza la alarma en P3_12. Se enciende con PCT mayor o igual a THR y se apaga con PCT menor que THR menos 5 puntos. En la banda intermedia conserva su estado. Con 60 %, 72 %, 67 % y 62 %, la alarma queda apagada, encendida, encendida y apagada, respectivamente. El LED externo es activo en alto. El rojo integrado comparte la salida y es activo en bajo.
