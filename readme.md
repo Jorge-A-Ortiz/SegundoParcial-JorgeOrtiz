@@ -37,7 +37,7 @@ En el Hito 2, CTIMER0 recibe FRO12M con divisor 1. El prescaler `PR=11` divide l
 
 LPUART0 utiliza P0_3 para TX y P0_2 para RX a través de MCU-Link VCOM. Configura la terminal serial a **115200 baudios, 8 bits, sin paridad, 1 bit de parada y sin control de flujo**. El reloj funcional usa FRO12M con divisor 1.
 
-Al iniciar, se encola la línea provisional `UART lista` con terminación CRLF. La ISR transmite desde una cola circular de 256 bytes; el programa principal continúa atendiendo el LED de actividad. Si la terminal se abre después del arranque, pulsa RESET para ver la línea. La recepción UART está habilitada: la ISR almacena los bytes en una cola circular de 256 posiciones (255 útiles). En esta etapa todavía no se consumen ni se interpretan; si la cola se llena o aparece un error de recepción, se registra una falla y se descartan los bytes posteriores hasta reiniciar. El armado de líneas acepta LF y CRLF; ignora líneas vacías y CR aislado. Se aceptan hasta 32 caracteres sin contar el terminador. Si se excede el límite, se descarta la línea completa hasta LF y se encola una sola respuesta `ERR` al terminarla. Los bytes RX se consumen con un máximo de 32 por vuelta del lazo, fuera de la ISR. En este hito todas las líneas completas reciben `ERR`; los comandos de aplicación se añaden más adelante.
+La UART usa colas por interrupción. El lazo consume hasta 32 bytes por vuelta y acepta líneas de hasta 32 caracteres con LF o CRLF. Ignora líneas vacías. Las líneas largas, inválidas o con comandos desconocidos reciben ERR al terminar.
 
 
 ## Adquisición analógica (Hito 4)
@@ -57,3 +57,11 @@ El monitor arranca en RUN con THR=70 % y la alarma externa apagada. Cada muestra
 SW3 (P0_6, activo en bajo) alterna RUN y PAUSE una vez por pulsación. Tanto la presión como la liberación deben permanecer estables durante 30 ms. Mantener presionado el botón no repite el cambio.
 
 PAUSE apaga la alarma y mantiene el muestreo, la señal de diagnóstico, el LED de actividad y la atención UART. Al regresar a RUN, la alarma se decide de inmediato con la última muestra válida y el umbral vigente. Las muestras siguientes vuelven a aplicar la histéresis.
+
+### STATUS y telemetría
+
+El monitor transmite una línea de estado cada 1000 ms y también al recibir STATUS. Ambas salidas terminan en CRLF y usan el formato:
+
+    t=1000;ADC=2048;PCT=50;THR=70;MODE=RUN;ALARM=0
+
+t indica los milisegundos desde el inicio del temporizador, ADC es la última lectura de 12 bits, PCT es su porcentaje redondeado, THR es el umbral, MODE es RUN o PAUSE y ALARM vale 1 cuando la alarma está activa.

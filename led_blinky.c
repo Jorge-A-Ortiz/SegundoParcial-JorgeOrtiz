@@ -7,6 +7,7 @@
 #include "fsl_lpadc.h"
 #include "monitor.h"
 #include <string.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -14,6 +15,7 @@
 #define RX_SIZE 256U
 #define LINE_SIZE 32U
 #define RX_BUDGET 32U
+#define STATUS_SIZE 96U
 
 static volatile uint32_t s_milliseconds;
 static uint32_t s_lastAdcStart;
@@ -76,11 +78,16 @@ void LPUART0_IRQHandler(void)
     SDK_ISR_EXIT_BARRIER;
 }
 
+static size_t TxFree(void)
+{
+    return (s_txTail + TX_SIZE - s_txHead - 1U) % TX_SIZE;
+}
+
 static bool QueueLine(const char *line)
 {
     size_t length = strlen(line);
     uint16_t head = s_txHead;
-    size_t freeBytes = (s_txTail + TX_SIZE - head - 1U) % TX_SIZE;
+    size_t freeBytes = TxFree();
     if (length > freeBytes)
     {
         return false;
@@ -96,14 +103,32 @@ static bool QueueLine(const char *line)
     return true;
 }
 
-static void ProcessRxByte(uint8_t byte)
+static bool QueueStatus(uint32_t now)
+{
+    char line[STATUS_SIZE];
+    int length = snprintf(line, sizeof(line),
+        "t=%lu;ADC=%u;PCT=%u;THR=%u;MODE=%s;ALARM=%u\r\n",
+        (unsigned long)now, (unsigned)s_monitor.adc, (unsigned)s_monitor.pct,
+        (unsigned)s_monitor.threshold, s_monitor.run ? "RUN" : "PAUSE",
+        (unsigned)s_monitor.alarmOn);
+    return length > 0 && (size_t)length < sizeof(line) && QueueLine(line);
+}
+
+static void ProcessRxByte(uint8_t byte, uint32_t now)
 {
     if (byte == '\n')
     {
-        if (!s_discardLine && !s_pendingCr && s_lineLength > 0U)
+        if (s_discardLine || s_lineLength > 0U)
         {
             s_line[s_lineLength] = '\0';
-            (void)QueueLine("ERR\r\n");
+            if (!s_discardLine && strcmp(s_line, "STATUS") == 0)
+            {
+                (void)QueueStatus(now);
+            }
+            else
+            {
+                (void)QueueLine("ERR\r\n");
+            }
         }
         s_lineLength = 0U;
         s_discardLine = false;
@@ -125,7 +150,7 @@ static void ProcessRxByte(uint8_t byte)
         s_pendingCr = true;
         return;
     }
-    if (s_lineLength >= LINE_SIZE)
+    if (s_lineLength >= LINE_SIZE || byte < 32U || byte > 126U)
     {
         s_lineLength = 0U;
         s_discardLine = true;
@@ -134,9 +159,9 @@ static void ProcessRxByte(uint8_t byte)
     s_line[s_lineLength++] = (char)byte;
 }
 
-static void PollRx(void)
+static void PollRx(uint32_t now)
 {
-    for (uint8_t count = 0U; count < RX_BUDGET; ++count)
+    for (uint8_t count = 0U; count < RX_BUDGET && TxFree() >= STATUS_SIZE; ++count)
     {
         uint16_t tail = s_rxTail;
         if (tail == s_rxHead)
@@ -145,7 +170,7 @@ static void PollRx(void)
         }
         uint8_t byte = s_rxBuffer[tail];
         s_rxTail = (uint16_t)((tail + 1U) % RX_SIZE);
-        ProcessRxByte(byte);
+        ProcessRxByte(byte, now);
     }
 }
 
@@ -255,10 +280,8 @@ int main(void)
     Monitor_Init(&s_monitor);
     InitializeTimer();
     InitializeAdc();
-    if (InitializeUart())
-    {
-        (void)QueueLine("UART lista\r\n");
-    }
+    bool uartReady = InitializeUart();
+    uint32_t lastTelemetry = 0U;
 
     uint32_t lastActivityChange = 0U;
     bool activityOn = false;
@@ -266,11 +289,19 @@ int main(void)
     while (1)
     {
         uint32_t now = s_milliseconds;
-        PollRx();
         PollAdc(now);
         if (Monitor_PollButton(&s_monitor, now, GPIO_PinRead(GPIO0, 6U) == 0U))
         {
             GPIO_PinWrite(GPIO3, 12U, s_monitor.alarmOn ? 1U : 0U);
+        }
+
+        if (uartReady)
+        {
+            if ((uint32_t)(now - lastTelemetry) >= 1000U && QueueStatus(now))
+            {
+                lastTelemetry += 1000U;
+            }
+            PollRx(now);
         }
 
         while ((uint32_t)(now - lastActivityChange) >= 500U)
