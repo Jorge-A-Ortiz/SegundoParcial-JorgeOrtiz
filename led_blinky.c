@@ -9,14 +9,46 @@
 #include <stdint.h>
 
 #define TX_SIZE 256U
+#define RX_SIZE 256U
 
 static volatile uint32_t s_milliseconds;
 static volatile uint8_t s_txBuffer[TX_SIZE];
 static volatile uint16_t s_txHead;
 static volatile uint16_t s_txTail;
+static volatile uint8_t s_rxBuffer[RX_SIZE];
+static volatile uint16_t s_rxHead;
+static volatile uint16_t s_rxTail;
+static volatile bool s_rxFault;
 
 void LPUART0_IRQHandler(void)
 {
+    uint32_t flags = LPUART_GetStatusFlags(LPUART0);
+    uint32_t errors = kLPUART_RxOverrunFlag | kLPUART_FramingErrorFlag |
+                      kLPUART_ParityErrorFlag | kLPUART_NoiseErrorFlag;
+    if ((flags & errors) != 0U)
+    {
+        (void)LPUART_ClearStatusFlags(LPUART0, flags & errors);
+        s_rxFault = true;
+    }
+    for (unsigned int i = 0U; i < 16U; ++i)
+    {
+        if ((LPUART_GetStatusFlags(LPUART0) & kLPUART_RxDataRegFullFlag) == 0U)
+        {
+            break;
+        }
+        uint8_t byte = LPUART_ReadByte(LPUART0);
+        uint16_t next = (uint16_t)((s_rxHead + 1U) % RX_SIZE);
+        if (next == s_rxTail)
+        {
+            s_rxFault = true;
+        }
+        else if (!s_rxFault)
+        {
+            s_rxBuffer[s_rxHead] = byte;
+            s_rxHead = next;
+        }
+    }
+
     if ((LPUART_GetEnabledInterrupts(LPUART0) & kLPUART_TxDataRegEmptyInterruptEnable) != 0U &&
         (LPUART_GetStatusFlags(LPUART0) & kLPUART_TxDataRegEmptyFlag) != 0U)
     {
@@ -62,11 +94,14 @@ static bool InitializeUart(void)
     config.dataBitsCount = kLPUART_EightDataBits;
     config.stopBitCount = kLPUART_OneStopBit;
     config.enableTx = true;
-    config.enableRx = false;
+    config.enableRx = true;
     if (LPUART_Init(LPUART0, &config, 12000000U) != kStatus_Success)
     {
         return false;
     }
+    LPUART_EnableInterrupts(LPUART0, kLPUART_RxDataRegFullInterruptEnable |
+        kLPUART_RxOverrunInterruptEnable | kLPUART_FramingErrorInterruptEnable |
+        kLPUART_ParityErrorInterruptEnable | kLPUART_NoiseErrorInterruptEnable);
     NVIC_SetPriority(LPUART0_IRQn, 2U);
     EnableIRQ(LPUART0_IRQn);
     return true;
