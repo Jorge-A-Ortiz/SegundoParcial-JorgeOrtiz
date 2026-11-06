@@ -147,6 +147,20 @@ static bool HandleThreshold(const char *line)
     return true;
 }
 
+static bool HandleMode(const char *line)
+{
+    bool run = strcmp(line, "START") == 0;
+    if (!run && strcmp(line, "STOP") != 0)
+    {
+        return false;
+    }
+
+    Monitor_SetRun(&s_monitor, run);
+    GPIO_PinWrite(GPIO3, 12U, s_monitor.alarmOn ? 1U : 0U);
+    (void)QueueLine(run ? "OK RUN\r\n" : "OK PAUSE\r\n");
+    return true;
+}
+
 static void ProcessRxByte(uint8_t byte, uint32_t now)
 {
     if (byte == '\n')
@@ -158,7 +172,7 @@ static void ProcessRxByte(uint8_t byte, uint32_t now)
             {
                 (void)QueueStatus(now);
             }
-            else if (s_discardLine || !HandleThreshold(s_line))
+            else if (s_discardLine || (!HandleMode(s_line) && !HandleThreshold(s_line)))
             {
                 (void)QueueLine("ERR\r\n");
             }
@@ -194,6 +208,21 @@ static void ProcessRxByte(uint8_t byte, uint32_t now)
 
 static void PollRx(uint32_t now)
 {
+    uint32_t irqState = DisableGlobalIRQ();
+    bool fault = s_rxFault;
+    if (fault)
+    {
+        s_rxTail = s_rxHead;
+        s_rxFault = false;
+    }
+    EnableGlobalIRQ(irqState);
+    if (fault)
+    {
+        s_lineLength = 0U;
+        s_pendingCr = false;
+        s_discardLine = true;
+    }
+
     for (uint8_t count = 0U; count < RX_BUDGET && TxFree() >= STATUS_SIZE; ++count)
     {
         uint16_t tail = s_rxTail;

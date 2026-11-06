@@ -69,3 +69,9 @@ t indica los milisegundos desde el inicio del temporizador, ADC es la última le
 ### Umbral por UART
 
 THR n cambia el umbral a un entero decimal entre 10 y 95, inclusive. Por ejemplo, THR 75 responde OK THR=75. Una entrada inválida responde ERR y conserva el estado. En RUN se reevalúa la alarma con la última muestra válida. En PAUSE permanece apagada.
+
+### Cambio de modo por UART
+
+START activa RUN y responde OK RUN. STOP activa PAUSE y responde OK PAUSE. Ambos usan la misma transición que SW3. Repetir START en RUN conserva el estado de la alarma dentro de la banda de histéresis. En PAUSE continúan el muestreo, la actividad y la telemetría.
+
+Los comandos distinguen mayúsculas y minúsculas. Si se detecta un error de recepción o se llena la cola RX, se descartan los datos pendientes y se espera el siguiente LF para recuperar el inicio de línea.

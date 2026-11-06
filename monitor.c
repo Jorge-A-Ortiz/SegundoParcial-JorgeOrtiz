@@ -30,6 +30,15 @@ void Monitor_UpdateSample(monitor_t *monitor, uint16_t adc)
     }
 }
 
+void Monitor_SetRun(monitor_t *monitor, bool run)
+{
+    if (monitor->run != run)
+    {
+        monitor->run = run;
+        monitor->alarmOn = run && monitor->sampleValid && monitor->pct >= monitor->threshold;
+    }
+}
+
 bool Monitor_PollButton(monitor_t *monitor, uint32_t now, bool pressed)
 {
     if (pressed != monitor->buttonRaw)
@@ -49,8 +58,7 @@ bool Monitor_PollButton(monitor_t *monitor, uint32_t now, bool pressed)
         return false;
     }
 
-    monitor->run = !monitor->run;
-    monitor->alarmOn = monitor->run && monitor->sampleValid && monitor->pct >= monitor->threshold;
+    Monitor_SetRun(monitor, !monitor->run);
     return true;
 }
 
