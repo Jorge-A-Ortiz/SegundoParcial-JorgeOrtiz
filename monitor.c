@@ -53,3 +53,15 @@ bool Monitor_PollButton(monitor_t *monitor, uint32_t now, bool pressed)
     monitor->alarmOn = monitor->run && monitor->sampleValid && monitor->pct >= monitor->threshold;
     return true;
 }
+
+bool Monitor_SetThreshold(monitor_t *monitor, unsigned threshold)
+{
+    if (threshold < 10U || threshold > 95U)
+    {
+        return false;
+    }
+
+    monitor->threshold = (uint8_t)threshold;
+    monitor->alarmOn = monitor->run && monitor->sampleValid && monitor->pct >= monitor->threshold;
+    return true;
+}

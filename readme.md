@@ -65,3 +65,7 @@ El monitor transmite una línea de estado cada 1000 ms y también al recibir STA
     t=1000;ADC=2048;PCT=50;THR=70;MODE=RUN;ALARM=0
 
 t indica los milisegundos desde el inicio del temporizador, ADC es la última lectura de 12 bits, PCT es su porcentaje redondeado, THR es el umbral, MODE es RUN o PAUSE y ALARM vale 1 cuando la alarma está activa.
+
+### Umbral por UART
+
+THR n cambia el umbral a un entero decimal entre 10 y 95, inclusive. Por ejemplo, THR 75 responde OK THR=75. Una entrada inválida responde ERR y conserva el estado. En RUN se reevalúa la alarma con la última muestra válida. En PAUSE permanece apagada.

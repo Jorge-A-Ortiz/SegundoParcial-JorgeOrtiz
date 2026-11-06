@@ -114,6 +114,39 @@ static bool QueueStatus(uint32_t now)
     return length > 0 && (size_t)length < sizeof(line) && QueueLine(line);
 }
 
+static bool HandleThreshold(const char *line)
+{
+    if (strncmp(line, "THR ", 4U) != 0 || line[4] == '\0')
+    {
+        return false;
+    }
+
+    unsigned value = 0U;
+    for (const char *digit = line + 4; *digit != '\0'; ++digit)
+    {
+        if (*digit < '0' || *digit > '9')
+        {
+            return false;
+        }
+        value = value * 10U + (unsigned)(*digit - '0');
+        if (value > 95U)
+        {
+            return false;
+        }
+    }
+
+    if (!Monitor_SetThreshold(&s_monitor, value))
+    {
+        return false;
+    }
+
+    GPIO_PinWrite(GPIO3, 12U, s_monitor.alarmOn ? 1U : 0U);
+    char reply[16];
+    (void)snprintf(reply, sizeof(reply), "OK THR=%u\r\n", value);
+    (void)QueueLine(reply);
+    return true;
+}
+
 static void ProcessRxByte(uint8_t byte, uint32_t now)
 {
     if (byte == '\n')
@@ -125,7 +158,7 @@ static void ProcessRxByte(uint8_t byte, uint32_t now)
             {
                 (void)QueueStatus(now);
             }
-            else
+            else if (s_discardLine || !HandleThreshold(s_line))
             {
                 (void)QueueLine("ERR\r\n");
             }
