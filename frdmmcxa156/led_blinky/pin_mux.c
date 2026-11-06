@@ -111,6 +111,11 @@ void BOARD_InitPins(void)
         kPORT_UnlockRegister
     };
     PORT_SetPinConfig(PORT0, 6U, &switchConfig);
+
+    port_pin_config_t uartConfig = switchConfig;
+    uartConfig.mux = kPORT_MuxAlt2;
+    PORT_SetPinConfig(PORT0, 2U, &uartConfig);
+    PORT_SetPinConfig(PORT0, 3U, &uartConfig);
 }
 /***********************************************************************************************************************
  * EOF

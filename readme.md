@@ -5,7 +5,7 @@
 
 ## Objetivo
 
-Desarrollar por etapas un monitor de una señal analógica con la placa FRDM-MCXA156. Este hito prepara los pines del montaje y documenta el proyecto; la adquisición ADC, la temporización, la alarma y el protocolo UART se incorporarán en hitos posteriores.
+Desarrollar por etapas un monitor de una señal analógica con la placa FRDM-MCXA156. El proyecto incorpora temporización, actividad y transmisión UART. La adquisición ADC, la alarma y la recepción de comandos se incorporarán en hitos posteriores.
 
 ## Placa y entorno
 
@@ -32,3 +32,9 @@ Para el potenciómetro de 10 kΩ, conecta los extremos a 3.3 V/VDDA y GND, y la 
 Hito 1 configuró P3_12 y P3_13 como salidas inicialmente bajas y SW3/P0_6 como entrada con pull-up. Se retiró SysTick porque alternaba P3_12, pin reservado para la alarma.
 
 En el Hito 2, CTIMER0 recibe FRO12M con divisor 1. El prescaler `PR=11` divide los 12 MHz entre 12 y deja el contador a 1 MHz. El match `MR0=1000`, con reset e interrupción, genera un tick nominal de 1 ms; la ISR sólo incrementa el contador de milisegundos. El lazo principal alterna P3_13 cada 500 ms sin retardos bloqueantes, por lo que un ciclo completo del LED dura 1 s. El firmware compila; la comprobación formal en la placa queda para el hito de pruebas.
+
+## Transmisión UART (Hito 3)
+
+LPUART0 utiliza P0_3 para TX y P0_2 para RX a través de MCU-Link VCOM. Configura la terminal serial a **115200 baudios, 8 bits, sin paridad, 1 bit de parada y sin control de flujo**. El reloj funcional usa FRO12M con divisor 1.
+
+Al iniciar, se encola la línea provisional `UART lista` con terminación CRLF. La ISR transmite desde una cola circular de 256 bytes; el programa principal continúa atendiendo el LED de actividad. Si la terminal se abre después del arranque, pulsa RESET para ver la línea. La recepción y los comandos aún no están implementados.
