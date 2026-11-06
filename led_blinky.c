@@ -10,6 +10,8 @@
 
 #define TX_SIZE 256U
 #define RX_SIZE 256U
+#define LINE_SIZE 32U
+#define RX_BUDGET 32U
 
 static volatile uint32_t s_milliseconds;
 static volatile uint8_t s_txBuffer[TX_SIZE];
@@ -19,6 +21,10 @@ static volatile uint8_t s_rxBuffer[RX_SIZE];
 static volatile uint16_t s_rxHead;
 static volatile uint16_t s_rxTail;
 static volatile bool s_rxFault;
+static char s_line[LINE_SIZE + 1U];
+static uint8_t s_lineLength;
+static bool s_discardLine;
+static bool s_pendingCr;
 
 void LPUART0_IRQHandler(void)
 {
@@ -83,6 +89,59 @@ static bool QueueLine(const char *line)
     s_txHead = head;
     LPUART_EnableInterrupts(LPUART0, kLPUART_TxDataRegEmptyInterruptEnable);
     return true;
+}
+
+static void ProcessRxByte(uint8_t byte)
+{
+    if (byte == '\n')
+    {
+        if (!s_discardLine && !s_pendingCr && s_lineLength > 0U)
+        {
+            s_line[s_lineLength] = '\0';
+            (void)QueueLine("ERR\r\n");
+        }
+        s_lineLength = 0U;
+        s_discardLine = false;
+        s_pendingCr = false;
+        return;
+    }
+    if (s_discardLine)
+    {
+        return;
+    }
+    if (s_pendingCr)
+    {
+        s_pendingCr = false;
+        s_discardLine = true;
+        return;
+    }
+    if (byte == '\r')
+    {
+        s_pendingCr = true;
+        return;
+    }
+    if (s_lineLength >= LINE_SIZE)
+    {
+        s_lineLength = 0U;
+        s_discardLine = true;
+        return;
+    }
+    s_line[s_lineLength++] = (char)byte;
+}
+
+static void PollRx(void)
+{
+    for (uint8_t count = 0U; count < RX_BUDGET; ++count)
+    {
+        uint16_t tail = s_rxTail;
+        if (tail == s_rxHead)
+        {
+            break;
+        }
+        uint8_t byte = s_rxBuffer[tail];
+        s_rxTail = (uint16_t)((tail + 1U) % RX_SIZE);
+        ProcessRxByte(byte);
+    }
 }
 
 static bool InitializeUart(void)
@@ -151,6 +210,7 @@ int main(void)
     while (1)
     {
         uint32_t now = s_milliseconds;
+        PollRx();
 
         while ((uint32_t)(now - lastActivityChange) >= 500U)
         {
