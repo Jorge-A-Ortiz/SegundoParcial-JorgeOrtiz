@@ -74,6 +74,8 @@ void BOARD_InitPins(void)
         .pinDirection = kGPIO_DigitalOutput,
         .outputLogic = 0U
     };
+    const gpio_pin_config_t diagnosticIdle = {kGPIO_DigitalOutput, 1U};
+    GPIO_PinInit(GPIO3, 0U, &diagnosticIdle);
     GPIO_PinInit(GPIO3, 12U, &outputOff);
     GPIO_PinInit(GPIO3, 13U, &outputOff);
 
@@ -90,6 +92,7 @@ void BOARD_InitPins(void)
         kPORT_InputNormal,
         kPORT_UnlockRegister
     };
+    PORT_SetPinConfig(PORT3, 0U, &outputConfig);
     PORT_SetPinConfig(PORT3, 12U, &outputConfig);
     PORT_SetPinConfig(PORT3, 13U, &outputConfig);
 

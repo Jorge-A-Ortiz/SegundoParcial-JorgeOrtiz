@@ -43,3 +43,7 @@ Al iniciar, se encola la línea provisional `UART lista` con terminación CRLF. 
 ## Adquisición analógica (Hito 4)
 
 ADC1 lee el canal 8 (ADC1_A8) en P1_10/J4-2 cada 100 ms. Usa resolución de 12 bits, referencia VDDA (Alt3), calibración de offset y automática al inicio, y tiempo de muestreo ADCK131. El resultado del SDK se desplaza 3 bits para obtener el rango 0–4095. El porcentaje se calcula con redondeo: `(ADC × 100 + 2047) / 4095`. El valor medido no controla todavía ningún LED ni se transmite por UART.
+
+### Señal de diagnóstico del ADC
+
+P3_0 cambia de nivel justo antes de cada disparo del ADC. Conecta la punta del osciloscopio a P3_0 y la tierra de la sonda a GND de la placa. Entre flancos consecutivos se esperan 100 ms. Entre dos flancos del mismo tipo se esperan 200 ms (5 Hz). P3_0 comparte la señal con el LED azul integrado, que es activo en bajo.

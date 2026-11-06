@@ -184,6 +184,7 @@ static void PollAdc(uint32_t now)
         if (!s_adcPending)
         {
             s_adcPending = true;
+            GPIO_PortToggle(GPIO3, 1UL << 0U);
             LPADC_DoSoftwareTrigger(ADC1, 1U);
         }
     }
