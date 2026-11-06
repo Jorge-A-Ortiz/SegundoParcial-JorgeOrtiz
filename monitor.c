@@ -29,3 +29,27 @@ void Monitor_UpdateSample(monitor_t *monitor, uint16_t adc)
         monitor->alarmOn = true;
     }
 }
+
+bool Monitor_PollButton(monitor_t *monitor, uint32_t now, bool pressed)
+{
+    if (pressed != monitor->buttonRaw)
+    {
+        monitor->buttonRaw = pressed;
+        monitor->buttonSince = now;
+    }
+
+    if (pressed == monitor->buttonStable || (uint32_t)(now - monitor->buttonSince) < 30U)
+    {
+        return false;
+    }
+
+    monitor->buttonStable = pressed;
+    if (!pressed)
+    {
+        return false;
+    }
+
+    monitor->run = !monitor->run;
+    monitor->alarmOn = monitor->run && monitor->sampleValid && monitor->pct >= monitor->threshold;
+    return true;
+}

@@ -51,3 +51,9 @@ P3_0 cambia de nivel justo antes de cada disparo del ADC. Conecta la punta del o
 ### Alarma con histéresis
 
 El monitor arranca en RUN con THR=70 % y la alarma externa apagada. Cada muestra válida actualiza la alarma en P3_12. Se enciende con PCT mayor o igual a THR y se apaga con PCT menor que THR menos 5 puntos. En la banda intermedia conserva su estado. Con 60 %, 72 %, 67 % y 62 %, la alarma queda apagada, encendida, encendida y apagada, respectivamente. El LED externo es activo en alto. El rojo integrado comparte la salida y es activo en bajo.
+
+### Modos RUN y PAUSE con SW3
+
+SW3 (P0_6, activo en bajo) alterna RUN y PAUSE una vez por pulsación. Tanto la presión como la liberación deben permanecer estables durante 30 ms. Mantener presionado el botón no repite el cambio.
+
+PAUSE apaga la alarma y mantiene el muestreo, la señal de diagnóstico, el LED de actividad y la atención UART. Al regresar a RUN, la alarma se decide de inmediato con la última muestra válida y el umbral vigente. Las muestras siguientes vuelven a aplicar la histéresis.

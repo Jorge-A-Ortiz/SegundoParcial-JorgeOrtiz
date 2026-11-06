@@ -15,8 +15,12 @@ typedef struct
     bool run;
     bool sampleValid;
     bool alarmOn;
+    bool buttonRaw;
+    bool buttonStable;
+    uint32_t buttonSince;
 } monitor_t;
 
+bool Monitor_PollButton(monitor_t *monitor, uint32_t now, bool pressed);
 void Monitor_Init(monitor_t *monitor);
 void Monitor_UpdateSample(monitor_t *monitor, uint16_t adc);
 

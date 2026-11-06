@@ -268,6 +268,10 @@ int main(void)
         uint32_t now = s_milliseconds;
         PollRx();
         PollAdc(now);
+        if (Monitor_PollButton(&s_monitor, now, GPIO_PinRead(GPIO0, 6U) == 0U))
+        {
+            GPIO_PinWrite(GPIO3, 12U, s_monitor.alarmOn ? 1U : 0U);
+        }
 
         while ((uint32_t)(now - lastActivityChange) >= 500U)
         {
