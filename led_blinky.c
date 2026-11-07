@@ -6,6 +6,12 @@
 #include "fsl_lpuart.h"
 #include "fsl_lpadc.h"
 #include "monitor.h"
+#ifdef P10_TIMING
+#include "pruebas/p10_timing.h"
+#endif
+#ifdef P02_CAPTURE
+#include "pruebas/p02_capture.h"
+#endif
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -33,6 +39,14 @@ static uint8_t s_lineLength;
 static bool s_discardLine;
 static bool s_pendingCr;
 
+#ifdef P10_TIMING
+static volatile uint32_t s_rxLfTime[RX_SIZE];
+static volatile uint32_t s_txReplyStart[TX_SIZE];
+static volatile uint32_t s_txCompleting;
+static uint32_t s_currentLfTime;
+static uint32_t s_nextReplyStart;
+#endif
+
 void LPUART0_IRQHandler(void)
 {
     uint32_t flags = LPUART_GetStatusFlags(LPUART0);
@@ -57,17 +71,44 @@ void LPUART0_IRQHandler(void)
         }
         else if (!s_rxFault)
         {
+#ifdef P10_TIMING
+            if (byte == '\n')
+            {
+                s_rxLfTime[s_rxHead] = P10_Now();
+            }
+#endif
             s_rxBuffer[s_rxHead] = byte;
             s_rxHead = next;
         }
     }
 
+#ifdef P10_TIMING
+    if (s_txCompleting != 0U && (LPUART_GetStatusFlags(LPUART0) & kLPUART_TransmissionCompleteFlag) != 0U)
+    {
+        P10_Complete(s_txCompleting);
+        s_txCompleting = 0U;
+        LPUART_DisableInterrupts(LPUART0, kLPUART_TransmissionCompleteInterruptEnable);
+        LPUART_EnableInterrupts(LPUART0, kLPUART_TxDataRegEmptyInterruptEnable);
+    }
+    if (s_txCompleting == 0U)
+#endif
     if ((LPUART_GetEnabledInterrupts(LPUART0) & kLPUART_TxDataRegEmptyInterruptEnable) != 0U &&
         (LPUART_GetStatusFlags(LPUART0) & kLPUART_TxDataRegEmptyFlag) != 0U)
     {
         if (s_txTail != s_txHead)
         {
+#ifdef P10_TIMING
+            uint32_t replyStart = s_txReplyStart[s_txTail];
+#endif
             LPUART_WriteByte(LPUART0, s_txBuffer[s_txTail]);
+#ifdef P10_TIMING
+            if (replyStart != 0U)
+            {
+                s_txCompleting = replyStart;
+                LPUART_DisableInterrupts(LPUART0, kLPUART_TxDataRegEmptyInterruptEnable);
+                LPUART_EnableInterrupts(LPUART0, kLPUART_TransmissionCompleteInterruptEnable);
+            }
+#endif
             s_txTail = (uint16_t)((s_txTail + 1U) % TX_SIZE);
         }
         else
@@ -94,12 +135,26 @@ static bool QueueLine(const char *line)
     }
     for (size_t i = 0U; i < length; ++i)
     {
+#ifdef P10_TIMING
+        s_txReplyStart[head] = i + 1U == length ? s_nextReplyStart : 0U;
+#endif
         s_txBuffer[head] = (uint8_t)line[i];
         head = (uint16_t)((head + 1U) % TX_SIZE);
     }
+#ifdef P10_TIMING
+    uint32_t irqState = DisableGlobalIRQ();
+#endif
     __DMB();
     s_txHead = head;
-    LPUART_EnableInterrupts(LPUART0, kLPUART_TxDataRegEmptyInterruptEnable);
+#ifdef P10_TIMING
+    if (s_txCompleting == 0U)
+#endif
+    {
+        LPUART_EnableInterrupts(LPUART0, kLPUART_TxDataRegEmptyInterruptEnable);
+    }
+#ifdef P10_TIMING
+    EnableGlobalIRQ(irqState);
+#endif
     return true;
 }
 
@@ -170,7 +225,14 @@ static void ProcessRxByte(uint8_t byte, uint32_t now)
             s_line[s_lineLength] = '\0';
             if (!s_discardLine && strcmp(s_line, "STATUS") == 0)
             {
+#ifdef P10_TIMING
+                s_nextReplyStart = s_currentLfTime;
+                P10_Start(s_currentLfTime);
+#endif
                 (void)QueueStatus(now);
+#ifdef P10_TIMING
+                s_nextReplyStart = 0U;
+#endif
             }
             else if (s_discardLine || (!HandleMode(s_line) && !HandleThreshold(s_line)))
             {
@@ -231,6 +293,12 @@ static void PollRx(uint32_t now)
             break;
         }
         uint8_t byte = s_rxBuffer[tail];
+#ifdef P10_TIMING
+        if (byte == '\n')
+        {
+            s_currentLfTime = s_rxLfTime[tail];
+        }
+#endif
         s_rxTail = (uint16_t)((tail + 1U) % RX_SIZE);
         ProcessRxByte(byte, now);
     }
@@ -271,6 +339,9 @@ static void PollAdc(uint32_t now)
             s_adcPending = true;
             GPIO_PortToggle(GPIO3, 1UL << 0U);
             LPADC_DoSoftwareTrigger(ADC1, 1U);
+#ifdef P10_TIMING
+            P10_Event(P10_ADC);
+#endif
         }
     }
     if (s_adcPending)
@@ -342,7 +413,13 @@ int main(void)
     Monitor_Init(&s_monitor);
     InitializeTimer();
     InitializeAdc();
+#ifdef P10_TIMING
+    P10_Init();
+#endif
     bool uartReady = InitializeUart();
+#ifdef P02_CAPTURE
+    P02_Init();
+#endif
     uint32_t lastTelemetry = 0U;
 
     uint32_t lastActivityChange = 0U;
@@ -362,8 +439,17 @@ int main(void)
             if ((uint32_t)(now - lastTelemetry) >= 1000U && QueueStatus(now))
             {
                 lastTelemetry += 1000U;
+#ifdef P10_TIMING
+                P10_Event(P10_TELEMETRY);
+#endif
             }
             PollRx(now);
+#ifdef P10_TIMING
+            P10_Report(QueueLine);
+#endif
+#ifdef P02_CAPTURE
+            P02_Report(QueueLine);
+#endif
         }
 
         while ((uint32_t)(now - lastActivityChange) >= 500U)
@@ -371,6 +457,9 @@ int main(void)
             lastActivityChange += 500U;
             activityOn = !activityOn;
             GPIO_PinWrite(GPIO3, 13U, activityOn ? 1U : 0U);
+#ifdef P10_TIMING
+            P10_Event(P10_LED);
+#endif
         }
     }
 }
