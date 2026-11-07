@@ -5,7 +5,7 @@
 
 ## Objetivo
 
-Desarrollar por etapas un monitor de una señal analógica con la placa FRDM-MCXA156. El proyecto incorpora temporización, actividad y transmisión UART. La adquisición ADC está activa; la alarma, el estado de aplicación y los comandos se incorporarán en hitos posteriores.
+Monitor de una señal analógica con la FRDM-MCXA156. Lee el potenciómetro cada 100 ms, controla una alarma con histéresis y ofrece telemetría y comandos por UART. El modo se puede cambiar con SW3 o desde la terminal.
 
 ## Placa y entorno
 
@@ -21,17 +21,17 @@ Desarrollar por etapas un monitor de una señal analógica con la placa FRDM-MCX
 | LED de alarma externo | P3_12 | J1, pin 15 | GPIO de salida, activo alto | Apagado |
 | LED de actividad externo | P3_13 | J1, pin 13 | GPIO de salida, activo alto | Apagado |
 | Pulsador de placa SW3 | P0_6 | Integrado en la FRDM-MCXA156 | Entrada GPIO, activo bajo | Pull-up habilitado |
-| Cursor del potenciómetro | P1_10 (ADC1_A8) | J4, pin 2 | Entrada analógica prevista | Se configura en el hito ADC |
+| Cursor del potenciómetro | P1_10 (ADC1_A8) | J4, pin 2 | Entrada analógica de 12 bits | ADC1_A8 |
 
 Conecta cada LED externo con su ánodo hacia la salida GPIO a través de una resistencia en serie (330 Ω–1 kΩ) y su cátodo a GND. No conectes un LED directamente entre GPIO y tierra sin resistencia.
 
-Para el potenciómetro de 10 kΩ, conecta los extremos a 3.3 V/VDDA y GND, y la pata central (cursor) a P1_10. En este hito el canal analógico aún no se inicializa.
+Para el potenciómetro de 10 kΩ, conecta los extremos a 3.3 V/VDDA y GND, y la pata central (cursor) a P1_10.
 
 ## Estado de implementación
 
 Hito 1 configuró P3_12 y P3_13 como salidas inicialmente bajas y SW3/P0_6 como entrada con pull-up. Se retiró SysTick porque alternaba P3_12, pin reservado para la alarma.
 
-En el Hito 2, CTIMER0 recibe FRO12M con divisor 1. El prescaler `PR=11` divide los 12 MHz entre 12 y deja el contador a 1 MHz. El match `MR0=1000`, con reset e interrupción, genera un tick nominal de 1 ms; la ISR sólo incrementa el contador de milisegundos. El lazo principal alterna P3_13 cada 500 ms sin retardos bloqueantes, por lo que un ciclo completo del LED dura 1 s. El firmware compila; la comprobación formal en la placa queda para el hito de pruebas.
+En el Hito 2, CTIMER0 recibe FRO12M con divisor 1. El prescaler `PR=11` divide los 12 MHz entre 12 y deja el contador a 1 MHz. El match `MR0=1000`, con reset e interrupción, genera un tick nominal de 1 ms; la ISR sólo incrementa el contador de milisegundos. El lazo principal alterna P3_13 cada 500 ms sin retardos bloqueantes, por lo que un ciclo completo del LED dura 1 s.
 
 ## Transmisión UART (Hito 3)
 
@@ -42,7 +42,7 @@ La UART usa colas por interrupción. El lazo consume hasta 32 bytes por vuelta y
 
 ## Adquisición analógica (Hito 4)
 
-ADC1 lee el canal 8 (ADC1_A8) en P1_10/J4-2 cada 100 ms. Usa resolución de 12 bits, referencia VDDA (Alt3), calibración de offset y automática al inicio, y tiempo de muestreo ADCK131. El resultado del SDK se desplaza 3 bits para obtener el rango 0–4095. El porcentaje se calcula con redondeo: `(ADC × 100 + 2047) / 4095`. El valor medido no controla todavía ningún LED ni se transmite por UART.
+ADC1 lee el canal 8 (ADC1_A8) en P1_10/J4-2 cada 100 ms. Usa resolución de 12 bits, referencia VDDA (Alt3), calibración de offset y automática al inicio, y tiempo de muestreo ADCK131. El resultado del SDK se desplaza 3 bits para obtener el rango 0–4095. El porcentaje se calcula con redondeo: `(ADC × 100 + 2047) / 4095`. El porcentaje alimenta la lógica de alarma y aparece en la telemetría.
 
 ### Señal de diagnóstico del ADC
 
@@ -75,3 +75,23 @@ THR n cambia el umbral a un entero decimal entre 10 y 95, inclusive. Por ejemplo
 START activa RUN y responde OK RUN. STOP activa PAUSE y responde OK PAUSE. Ambos usan la misma transición que SW3. Repetir START en RUN conserva el estado de la alarma dentro de la banda de histéresis. En PAUSE continúan el muestreo, la actividad y la telemetría.
 
 Los comandos distinguen mayúsculas y minúsculas. Si se detecta un error de recepción o se llena la cola RX, se descartan los datos pendientes y se espera el siguiente LF para recuperar el inicio de línea.
+
+## Compilación y carga
+
+1. Abre la carpeta raíz del proyecto. Necesitas el SDK indicado arriba, las herramientas ARM de MCUXpresso, CMake y Ninja. En `mcux_include.json`, ajusta `SdkRootDirPath` a la carpeta que contiene `mcuxsdk`, `ARMGCC_DIR` a la carpeta de herramientas ARM y `MCUX_VENV_PATH` a la carpeta `Scripts` del entorno Python de MCUXpresso.
+2. Desde la raíz, configura y compila con el preset `debug`.
+
+   ```sh
+   cmake --preset debug
+   cmake --build --preset debug
+   ```
+
+3. Conecta la placa por USB a **MCU-Link**. En VS Code con MCUXpresso, selecciona la sonda MCU-Link y carga `debug/SegundoParcial.elf` con la configuración **Debug**. Si se detiene en `main`, continúa la ejecución.
+4. Abre el puerto **MCU-Link VCOM** a **115200 baudios, 8N1, sin control de flujo**. Envía los comandos con LF o CRLF.
+
+## Verificación y demostración
+
+- [Video de la demostración](https://youtu.be/UeBQF-Kku2U)
+- [Resultados de las pruebas P01–P10](pruebas/resultados_P01_P10.md)
+- [Traza UART de P02](pruebas/traza_P02_UART.txt)
+- [Traza del banco en PC para P03, P05 y P10](pruebas/traza_simulacion_P03_P05_P10.txt)
