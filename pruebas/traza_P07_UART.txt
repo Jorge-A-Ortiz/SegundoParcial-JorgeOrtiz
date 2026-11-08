@@ -1,0 +1,19 @@
+---- Sent utf8 encoded message: "THR 50\r\n" ----
+OK THR=50
+t=256000;ADC=2465;PCT=60;THR=50;MODE=RUN;ALARM=1
+t=257000;ADC=2470;PCT=60;THR=50;MODE=RUN;ALARM=1
+t=258000;ADC=2467;PCT=60;THR=50;MODE=RUN;ALARM=1
+---- Closed the serial port COM3 ----
+---- Opened the serial port COM3 ----
+t=262000;ADC=2472;PCT=60;THR=50;MODE=RUN;ALARM=1
+t=263000;ADC=2463;PCT=60;THR=50;MODE=RUN;ALARM=1
+t=264000;ADC=2475;PCT=60;THR=50;MODE=RUN;ALARM=1
+---- Sent utf8 encoded message: "THR 80\r\n" ----
+OK THR=80
+t=265000;ADC=2460;PCT=60;THR=80;MODE=RUN;ALARM=0
+---- Sent utf8 encoded message: "THR 10\r\n" ----
+OK THR=10
+t=347000;ADC=2468;PCT=60;THR=10;MODE=RUN;ALARM=1
+---- Sent utf8 encoded message: "THR 95\r\n" ----
+OK THR=95
+t=350000;ADC=2458;PCT=60;THR=95;MODE=RUN;ALARM=0

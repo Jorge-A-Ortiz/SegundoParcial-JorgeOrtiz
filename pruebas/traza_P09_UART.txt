@@ -1,0 +1,13 @@
+---- Sent utf8 encoded message: "STA" ----
+t=234000;ADC=2465;PCT=60;THR=70;MODE=RUN;ALARM=0
+---- Sent utf8 encoded message: "TUS\n" ----
+t=240322;ADC=2464;PCT=60;THR=70;MODE=RUN;ALARM=0
+---- Sent utf8 encoded message: "STA" ----
+t=270000;ADC=2465;PCT=60;THR=70;MODE=RUN;ALARM=0
+---- Sent utf8 encoded message: "TUS\r\n" ----
+t=274175;ADC=2464;PCT=60;THR=70;MODE=RUN;ALARM=0
+---- Sent utf8 encoded message: "123456789012345678901234567890123\n" ----
+ERR
+t=361000;ADC=2465;PCT=60;THR=70;MODE=RUN;ALARM=0
+---- Sent utf8 encoded message: "STATUS\n" ----
+t=361478;ADC=2464;PCT=60;THR=70;MODE=RUN;ALARM=0
