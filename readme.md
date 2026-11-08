@@ -14,18 +14,29 @@ Monitor de una señal analógica con la FRDM-MCXA156. Lee el potenciómetro cada
 - SDK: MCUXpresso SDK 26.9.0.
 - Proyecto generado desde el ejemplo `led_blinky` de NXP y configurado con MCUXpresso Config Tools.
 
-## Pines del montaje
+## Pines y conexiones del montaje
 
-| Señal | Pin de MCU | Conector | Uso previsto | Estado inicial/configuración |
-|---|---|---|---|---|
-| LED de alarma externo | P3_12 | J1, pin 15 | GPIO de salida, activo alto | Apagado |
-| LED de actividad externo | P3_13 | J1, pin 13 | GPIO de salida, activo alto | Apagado |
-| Pulsador de placa SW3 | P0_6 | Integrado en la FRDM-MCXA156 | Entrada GPIO, activo bajo | Pull-up habilitado |
-| Cursor del potenciómetro | P1_10 (ADC1_A8) | J4, pin 2 | Entrada analógica de 12 bits | ADC1_A8 |
+Todas las conexiones del protoboard comparten GND. Desconecta la placa antes de cambiar el cableado.
 
-Conecta cada LED externo con su ánodo hacia la salida GPIO a través de una resistencia en serie (330 Ω–1 kΩ) y su cátodo a GND. No conectes un LED directamente entre GPIO y tierra sin resistencia.
+| Desde la placa | Hacia | Función |
+|---|---|---|
+| J2 pin 16, VDDA_MCU | Un extremo del potenciómetro de 10 kΩ | Referencia analógica nominal de 3.3 V. |
+| J3 pin 12, GND | Riel de tierra del protoboard | Retorno del otro extremo del potenciómetro y de ambos cátodos. |
+| J4 pin 2, P1_10 (ADC1_A8) | Pata central del potenciómetro | Entrada analógica de 12 bits. El rango usado es de GND a VDDA. |
+| J1 pin 13, P3_13 | Resistencia en serie de 330 Ω a 1 kΩ y ánodo del LED verde | Actividad. Cátodo a GND. Activo en alto. |
+| J1 pin 15, P3_12 | Resistencia en serie de 330 Ω a 1 kΩ y ánodo del LED rojo | Alarma. Cátodo a GND. Activo en alto. |
+| SW3 integrado, P0_6 | Pulsador de la placa | Activo en bajo con pull-up. |
+| USB-C MCU-Link, J15 | PC | Alimentación, programación y puerto virtual LPUART0 por P0_3 (TX) y P0_2 (RX). |
 
-Para el potenciómetro de 10 kΩ, conecta los extremos a 3.3 V/VDDA y GND, y la pata central (cursor) a P1_10.
+```text
+J2-16 VDDA ── extremo A [potenciómetro 10 kΩ] extremo B ── GND
+                           cursor ── J4-2 (P1_10)
+J1-13 (P3_13) ── R ── ánodo LED verde  cátodo ── GND
+J1-15 (P3_12) ── R ── ánodo LED rojo   cátodo ── GND
+J3-12 GND ── riel de tierra común del protoboard
+```
+
+Para la captura de P02, añade los puentes **P3_0 (J8 pin 7) → P3_14 (J1 pin 11)** y **P3_13 (J1 pin 13) → P3_15 (J1 pin 9)**. Consulta el [procedimiento de P02](pruebas/medicion_P02.md) y el [manual de NXP, figura 16 y tabla 16](https://www.nxp.com/docs/en/user-manual/UM12121.pdf).
 
 ## Estado de implementación
 
@@ -76,18 +87,32 @@ START activa RUN y responde OK RUN. STOP activa PAUSE y responde OK PAUSE. Ambos
 
 Los comandos distinguen mayúsculas y minúsculas. Si se detecta un error de recepción o se llena la cola RX, se descartan los datos pendientes y se espera el siguiente LF para recuperar el inicio de línea.
 
-## Compilación y carga
+## SDK y configuración de placa
 
-1. Abre la carpeta raíz del proyecto. Necesitas el SDK indicado arriba, las herramientas ARM de MCUXpresso, CMake y Ninja. En `mcux_include.json`, ajusta `SdkRootDirPath` a la carpeta que contiene `mcuxsdk`, `ARMGCC_DIR` a la carpeta de herramientas ARM y `MCUX_VENV_PATH` a la carpeta `Scripts` del entorno Python de MCUXpresso.
-2. Desde la raíz, configura y compila con el preset `debug`.
+- El proyecto usa los controladores GPIO, PORT, CTIMER, LPADC, LPUART e INPUTMUX del SDK oficial de NXP. El SDK se obtiene y se asocia como se indica abajo.
+- [Configuración de FRDM-MCXA156](frdmmcxa156/): inicialización de hardware, pines, reloj, archivos de placa y proyecto de Config Tools. La configuración que compila el firmware está en los archivos C de esta carpeta.
+- [Presets de CMake](CMakePresets.json) y [configuración de VS Code](.vscode/): compilación y depuración del MCXA156. El SDK completo aporta la infraestructura de CMake y Kconfig.
 
-   ```sh
+## Importación, compilación y carga
+
+1. Clona este repositorio. Instala **MCUXpresso for VS Code** y usa **MCUXpresso Installer** para disponer de ARM GCC, CMake, Ninja, Python y LinkServer. Importa el **SDK 26.09.00 para FRDM-MCXA156** desde **Import Repository**. El [SDK oficial de NXP](https://mcuxpresso.nxp.com/mcuxsdk/26.09.00/) también está disponible como archivo.
+2. En el panel **Projects** de MCUXpresso, selecciona **Import MCUXpresso for VS Code Project**, elige la carpeta raíz clonada y asocia el SDK y la cadena de herramientas instalados. Es el proyecto existente, con su configuración para **FRDM-MCXA156 / MCXA156 / Cortex-M33**. Consulta la [guía de importación de NXP](https://mcuxpresso.nxp.com/mcux-vscode/26.09/Project-Management.html#import-existing-project).
+3. Si compilas desde la terminal, verifica en `mcux_include.json` que `SdkRootDirPath` apunte a la carpeta que contiene `mcuxsdk`, `ARMGCC_DIR` a la carpeta de herramientas ARM y `MCUX_VENV_PATH` al directorio `Scripts` del entorno Python de MCUXpresso en Windows. Usa las rutas de tu equipo. Desde la raíz ejecuta:
+
+   ```powershell
    cmake --preset debug
    cmake --build --preset debug
    ```
 
-3. Conecta la placa por USB a **MCU-Link**. En VS Code con MCUXpresso, selecciona la sonda MCU-Link y carga `debug/SegundoParcial.elf` con la configuración **Debug**. Si se detiene en `main`, continúa la ejecución.
-4. Abre el puerto **MCU-Link VCOM** a **115200 baudios, 8N1, sin control de flujo**. Envía los comandos con LF o CRLF.
+4. Conecta el USB de **MCU-Link** y carga `debug/SegundoParcial.elf` con **Debug** en VS Code. Selecciona la sonda integrada. Si el depurador se detiene en `main`, pulsa **Continuar**. También puedes programar desde una terminal con LinkServer en PATH:
+
+   ```powershell
+   LinkServer flash MCXA156:FRDM-MCXA156 load debug/SegundoParcial.elf
+   ```
+
+5. Abre **MCU-Link VCOM** a **115200 baudios, 8N1, sin control de flujo**. Envía los comandos con LF o CRLF. El firmware normal arranca en RUN con THR=70 y emite telemetría cada segundo.
+
+Las compilaciones de diagnóstico son opcionales. Sus instrucciones están en [P02](pruebas/medicion_P02.md) y [P10](pruebas/medicion_P10.md).
 
 ## Verificación y demostración
 
